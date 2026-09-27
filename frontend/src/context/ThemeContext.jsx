@@ -4,7 +4,15 @@ const ThemeContext = createContext();
 
 export function ThemeProvider({ children }) {
   const [theme, setTheme] = useState(() => {
-    return localStorage.getItem('nexachat_theme') || 'dark';
+    const savedTheme = localStorage.getItem('nexachat_theme');
+    const hasMigratedDefault = localStorage.getItem('nexachat_theme_light_default');
+
+    if (!hasMigratedDefault) {
+      localStorage.setItem('nexachat_theme_light_default', 'true');
+      if (!savedTheme || savedTheme === 'dark') return 'light';
+    }
+
+    return savedTheme || 'light';
   });
 
   useEffect(() => {
