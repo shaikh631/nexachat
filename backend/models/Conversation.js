@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import AppRecord from './AppRecord.js';
 
 const conversationSchema = new mongoose.Schema(
   {
@@ -28,5 +29,5 @@ const conversationSchema = new mongoose.Schema(
   }
 );
 
-const Conversation = mongoose.model('Conversation', conversationSchema);
+const Conversation = AppRecord.discriminator('Conversation', conversationSchema);
 export default Conversation;

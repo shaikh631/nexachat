@@ -1,5 +1,6 @@
 import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
+import AppRecord from './AppRecord.js';
 
 const userSchema = new mongoose.Schema(
   {
@@ -12,7 +13,6 @@ const userSchema = new mongoose.Schema(
     email: {
       type: String,
       required: [true, 'Email is required'],
-      unique: true,
       lowercase: true,
       trim: true,
       match: [/^[^\s@]+@[^\s@]+\.[^\s@]+$/, 'Please provide a valid email address'],
@@ -38,6 +38,11 @@ const userSchema = new mongoose.Schema(
   }
 );
 
+userSchema.index(
+  { email: 1 },
+  { unique: true, partialFilterExpression: { recordType: 'User' } }
+);
+
 // Password hashing pre-save middleware
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) {
@@ -53,5 +58,5 @@ userSchema.methods.matchPassword = async function (enteredPassword) {
   return await bcrypt.compare(enteredPassword, this.password);
 };
 
-const User = mongoose.model('User', userSchema);
+const User = AppRecord.discriminator('User', userSchema);
 export default User;

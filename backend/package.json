@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "start": "node server.js",
-    "dev": "node --watch server.js"
+    "dev": "node --watch server.js",
+    "migrate:records": "node scripts/migrate-to-app-records.js"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.0",

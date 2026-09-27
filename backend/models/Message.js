@@ -1,4 +1,5 @@
 import mongoose from 'mongoose';
+import AppRecord from './AppRecord.js';
 
 const messageSchema = new mongoose.Schema(
   {
@@ -34,5 +35,5 @@ const messageSchema = new mongoose.Schema(
   }
 );
 
-const Message = mongoose.model('Message', messageSchema);
+const Message = AppRecord.discriminator('Message', messageSchema);
 export default Message;
