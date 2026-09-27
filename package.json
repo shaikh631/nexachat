@@ -1,0 +1,12 @@
+{
+  "name": "nexachat-workspace",
+  "version": "1.0.0",
+  "description": "NexaChat Full-Stack AI Assistant Web Application",
+  "private": true,
+  "scripts": {
+    "start": "node backend/server.js",
+    "backend": "npm run dev --prefix backend",
+    "frontend": "npm --prefix frontend run dev -- --host 0.0.0.0",
+    "build": "npm run build --prefix frontend"
+  }
+}
