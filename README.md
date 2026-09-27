@@ -81,6 +81,18 @@ Then start the Express server, which serves `frontend/dist` when the bundle exis
 npm --prefix backend start
 ```
 
+## Deploy Frontend to Vercel
+
+Deploy the `frontend` directory as a Vercel project:
+
+1. Import the Git repository into Vercel.
+2. Set **Root Directory** to `frontend`.
+3. Use the Vite framework preset, build command `npm run build`, and output directory `dist`.
+4. Add the environment variable `VITE_API_BASE_URL` with your Render backend origin, for example `https://your-service.onrender.com`. Do not add `/api` to the value.
+5. Deploy, then open the Vercel site and check sign-in and chat requests.
+
+The Vite development proxy continues to route local `/api` requests to `http://localhost:5001`. In production, the frontend sends requests to `${VITE_API_BASE_URL}/api`. The backend must remain configured with its production MongoDB URI, JWT secret, and Gemini API key on Render; those secrets do not belong in Vercel frontend variables.
+
 ## Notes
 
 - The Gemini key is read by the backend; Gemini model configuration lives in `backend/services/geminiService.js`.

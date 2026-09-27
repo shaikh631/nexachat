@@ -2,7 +2,8 @@
  * NexaChat Frontend API Client & SSE Stream Reader
  */
 
-const API_BASE = '/api';
+const API_ORIGIN = import.meta.env.VITE_API_BASE_URL?.replace(/\/+$/, '');
+const API_BASE = API_ORIGIN ? `${API_ORIGIN}/api` : '/api';
 
 // Helper to get stored auth token
 const getToken = () => localStorage.getItem('nexachat_token');
