@@ -3,6 +3,41 @@ import Message from '../models/Message.js';
 import geminiService, { GEMINI_MODEL } from '../services/geminiService.js';
 import nlpService from '../nlp/nlpService.js';
 
+const sendLocalFallback = async ({ req, res, conversation, text, history }) => {
+  const nlpResult = await nlpService.processMessage({
+    text,
+    user: req.user,
+    context: history,
+  });
+  const assistantMessage = await Message.create({
+    conversation: conversation._id,
+    sender: 'assistant',
+    content: nlpResult.content,
+    metadata: nlpResult.metadata,
+  });
+
+  conversation.lastMessageAt = new Date();
+  await conversation.save();
+
+  res.write(`data: ${JSON.stringify({ type: 'chunk', text: nlpResult.content })}\n\n`);
+  res.write(`data: ${JSON.stringify({
+    type: 'done',
+    assistantMessage,
+    conversationId: conversation._id,
+  })}\n\n`);
+  res.end();
+};
+
+const sendLocalFallbackOnce = (() => {
+  const completedResponses = new WeakSet();
+
+  return async (options) => {
+    if (completedResponses.has(options.res)) return;
+    completedResponses.add(options.res);
+    await sendLocalFallback(options);
+  };
+})();
+
 // @desc    Send message & receive streaming AI response (supports Gemini API + SSE)
 // @route   POST /api/chat
 // @access  Private / Optional Auth
@@ -104,25 +139,26 @@ export const sendMessage = async (req, res, next) => {
             },
             onError: async (err) => {
               console.error('[Gemini API Stream Error]:', err.message);
-              const fallbackText = "Sorry, I couldn't generate a response right now. Please try again.";
-              const assistantMessage = await Message.create({
-                conversation: conversation._id,
-                sender: 'assistant',
-                content: fallbackText,
+              await sendLocalFallbackOnce({
+                req,
+                res,
+                conversation,
+                text: message.trim(),
+                history: historyForAI,
               });
-
-              res.write(`data: ${JSON.stringify({ type: 'chunk', text: fallbackText })}\n\n`);
-              res.write(`data: ${JSON.stringify({
-                type: 'done',
-                assistantMessage,
-                conversationId: conversation._id,
-              })}\n\n`);
-              res.end();
             },
           });
           return;
         } catch (geminiError) {
           console.error('[Gemini Stream Catch]:', geminiError.message);
+          await sendLocalFallbackOnce({
+            req,
+            res,
+            conversation,
+            text: message.trim(),
+            history: historyForAI,
+          });
+          return;
         }
       }
 
@@ -173,20 +209,38 @@ export const sendMessage = async (req, res, next) => {
 
     // Non-streaming response fallback
     let assistantText = '';
+    let assistantMetadata;
     if (process.env.GEMINI_API_KEY) {
-      assistantText = await geminiService.streamResponse({
-        message: message.trim(),
-        history: historyForAI,
-      });
+      try {
+        assistantText = await geminiService.streamResponse({
+          message: message.trim(),
+          history: historyForAI,
+        });
+      } catch (error) {
+        console.error('[Gemini API Error]:', error.message);
+        const nlpResult = await nlpService.processMessage({
+          text: message.trim(),
+          user: req.user,
+          context: historyForAI,
+        });
+        assistantText = nlpResult.content;
+        assistantMetadata = nlpResult.metadata;
+      }
     } else {
-      const nlpResult = await nlpService.processMessage({ text: message, user: req.user });
+      const nlpResult = await nlpService.processMessage({
+        text: message.trim(),
+        user: req.user,
+        context: historyForAI,
+      });
       assistantText = nlpResult.content;
+      assistantMetadata = nlpResult.metadata;
     }
 
     const assistantMessage = await Message.create({
       conversation: conversation._id,
       sender: 'assistant',
       content: assistantText,
+      metadata: assistantMetadata,
     });
 
     conversation.lastMessageAt = new Date();
@@ -286,25 +340,27 @@ export const regenerateResponse = async (req, res, next) => {
             res.end();
           },
           onError: async (err) => {
-            const fallbackText = "Sorry, I couldn't generate a response right now. Please try again.";
-            const assistantMessage = await Message.create({
-              conversation: conversation._id,
-              sender: 'assistant',
-              content: fallbackText,
+            console.error('[Gemini Regenerate Error]:', err.message);
+            await sendLocalFallbackOnce({
+              req,
+              res,
+              conversation,
+              text: lastUserMsg.content,
+              history: historyForAI,
             });
-
-            res.write(`data: ${JSON.stringify({ type: 'chunk', text: fallbackText })}\n\n`);
-            res.write(`data: ${JSON.stringify({
-              type: 'done',
-              assistantMessage,
-              conversationId: conversation._id,
-            })}\n\n`);
-            res.end();
           }
         });
         return;
       } catch (err) {
         console.error('[Gemini Regenerate Error]:', err.message);
+        await sendLocalFallbackOnce({
+          req,
+          res,
+          conversation,
+          text: lastUserMsg.content,
+          history: historyForAI,
+        });
+        return;
       }
     }
 

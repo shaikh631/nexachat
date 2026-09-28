@@ -18,9 +18,6 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 5001;
 
-// Connect to MongoDB Database
-connectDB();
-
 // Core Middleware
 app.use(cors({
   origin: true,
@@ -58,7 +55,16 @@ if (fs.existsSync(frontendDistPath)) {
 // Error handling middleware
 app.use(errorHandler);
 
-// Start server
-app.listen(PORT, () => {
-  console.log(`[Server] NexaChat application running on http://localhost:${PORT}`);
-});
+const startServer = async () => {
+  try {
+    await connectDB();
+    app.listen(PORT, () => {
+      console.log(`[Server] NexaChat application running on http://localhost:${PORT}`);
+    });
+  } catch (error) {
+    console.error(error.message);
+    process.exit(1);
+  }
+};
+
+startServer();

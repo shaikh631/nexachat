@@ -4,17 +4,22 @@ import { MongoMemoryServer } from 'mongodb-memory-server';
 let mongoMemoryServer = null;
 
 export const connectDB = async () => {
+  const configuredUri = process.env.MONGODB_URI;
+  const uri = configuredUri || 'mongodb://127.0.0.1:27017/nexachat';
+
   try {
-    const uri = process.env.MONGODB_URI || 'mongodb://127.0.0.1:27017/nexachat';
-    
-    // Try connecting to the specified MongoDB URI first with a 3 second timeout
     const options = {
       serverSelectionTimeoutMS: 3000,
     };
-    
+
     await mongoose.connect(uri, options);
     console.log(`[Database] MongoDB connected successfully to ${mongoose.connection.host}`);
   } catch (error) {
+    const isLocalUri = uri.startsWith('mongodb://127.0.0.1') || uri.startsWith('mongodb://localhost');
+    if (configuredUri && !isLocalUri) {
+      throw new Error('[Database] Could not connect to configured MongoDB. Check MONGODB_URI and Atlas network access.');
+    }
+
     console.warn(`[Database] Standard MongoDB connection failed (${error.message}). Falling back to In-Memory MongoDB...`);
     
     try {

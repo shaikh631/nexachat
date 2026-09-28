@@ -76,41 +76,36 @@ export class GeminiService {
   async streamResponse({ message, history = [], onChunk, onDone, onError }) {
     const apiKey = process.env.GEMINI_API_KEY || this.apiKey;
 
-    if (apiKey) {
-      try {
-        const model = this.getModel();
-        const formattedHistory = this.formatHistory(history);
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY is not configured');
+    }
 
-        // Start chat session with historical messages
-        const chat = model.startChat({
-          history: formattedHistory,
-        });
+    const model = this.getModel();
+    const formattedHistory = this.formatHistory(history);
+    const chat = model.startChat({ history: formattedHistory });
+    let fullText = '';
 
-        const resultStream = await chat.sendMessageStream(message);
-        let fullText = '';
+    try {
+      const resultStream = await chat.sendMessageStream(message);
 
-        for await (const chunk of resultStream.stream) {
-          const chunkText = chunk.text();
-          if (chunkText) {
-            fullText += chunkText;
-            if (onChunk) onChunk(chunkText);
-          }
+      for await (const chunk of resultStream.stream) {
+        const chunkText = chunk.text();
+        if (chunkText) {
+          fullText += chunkText;
+          if (onChunk) onChunk(chunkText);
         }
-
-        if (onDone) onDone(fullText);
-        return fullText;
-      } catch (err) {
-        console.error('[GeminiService Error]:', err.message);
-        // Fall through to fallback error / dynamic engine
       }
+    } catch (error) {
+      console.error('[GeminiService Error]:', error.message);
+      if (onError) {
+        await onError(error);
+        return null;
+      }
+      throw error;
     }
 
-    // Friendly, secure error handling if key is missing or API fails
-    const fallbackMsg = "Sorry, I couldn't generate a response right now. Please check your GEMINI_API_KEY or try again.";
-    if (onError) {
-      onError(new Error(fallbackMsg));
-    }
-    return fallbackMsg;
+    if (onDone) await onDone(fullText);
+    return fullText;
   }
 
   /**
