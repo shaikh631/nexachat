@@ -301,21 +301,26 @@ A token consists of three parts separated by dots (\`.\`):
     }
   }
 
-  // 13. DYNAMIC KNOWLEDGE FALLBACK FOR ANY OPEN-ENDED QUESTION
+  // 13. Offline answers for common questions when Gemini is unavailable.
+  if (/\b(tcet|thakur college of engineering and technology)\b/i.test(lowerText)
+    && /\b(location|located|address|where)\b/i.test(lowerText)) {
+    return `### TCET Location 📍
+
+**Thakur College of Engineering and Technology (TCET)** is located in **Thakur Village, Kandivali East, Mumbai, Maharashtra, India**.
+
+For the latest directions, timings, and contact details, check the college's official website or map listing.`;
+  }
+
+  if (/\bwhat is ai\b|\bartificial intelligence\b/i.test(lowerText)) {
+    return `### What Is AI? 🤖
+
+**Artificial intelligence (AI)** is the field of building computer systems that can perform tasks that usually require human intelligence, such as understanding language, recognizing patterns, reasoning, and making predictions.
+
+Common examples include chat assistants, recommendation systems, image recognition, and fraud detection.`;
+  }
+
   const topicName = text.replace(/^(what is|explain|tell me about|how does|define|show me)\s+/i, '').trim();
   const titleTopic = topicName.charAt(0).toUpperCase() + topicName.slice(1);
 
-  return `### About ${titleTopic || text} 💡
-
-**${titleTopic || text}** is an important concept in software development and technology.
-
-#### Overview & Key Insights:
-1. **Core Purpose**: Understanding **${titleTopic}** helps developers build scalable, efficient, and well-structured applications.
-2. **Practical Application**: Commonly used in web development, database management, and technical architecture.
-3. **Best Practices**:
-   - Keep code modular and decoupled.
-   - Use clean, self-documenting naming conventions.
-   - Follow standard design patterns and error handling.
-
-> 💡 **Tip**: Ask for a code example (e.g. *"Write a code snippet for ${titleTopic}"*) or a comparison table to explore this further!`;
+  return `I don't have enough offline knowledge to answer **${titleTopic || text}** accurately right now. Gemini is temporarily unavailable, so please try again shortly or add a little more context to your question.`;
 }
